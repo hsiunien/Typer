@@ -1,5 +1,9 @@
 package wang.xiunian.library.typer
 
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.SoundPool
+import android.os.Build
 import android.widget.TextView
 
 /**
@@ -25,10 +29,21 @@ class TyperConfig {
     internal var mActionHead: ActionItem? = null
     internal var mLastAction: ActionItem? = mActionHead
     private var isStoped: Boolean = false
+    private var mSoundPool: SoundPool
 
     constructor(tv: TextView) {
         tv.tag = this
         mTv = tv
+
+        mSoundPool = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            SoundPool.Builder().setMaxStreams(10)
+                    .setAudioAttributes(AudioAttributes.Builder()
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                    .build()
+        } else {
+            SoundPool(10, AudioManager.STREAM_SYSTEM, 5)
+        }
+        mSoundPool.load(mTv.context, R.raw.type_in, 1)
     }
 
     fun appendItem(item: ActionItem) {
@@ -64,12 +79,32 @@ class TyperConfig {
         return this
     }
 
-    fun start() {
-        launchAction(mActionHead)
+    fun start(callback: Next? = null) {
+        launchAction(mActionHead, callback)
     }
 
     fun stop() {
+        releaseAudio()
         isStoped = true
+    }
+
+    private fun startAudioPlayer() {
+        mSoundPool.stop(1)
+        playAudio()
+    }
+
+    private fun playAudio() {
+        try {
+            mSoundPool.play(1, 1f, 1f, 1, 0, 1f)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+    }
+
+    private fun releaseAudio() {
+        mSoundPool.stop(1)
+        mSoundPool.release()
     }
 
     private fun add(text: String, next: Next, speed: Int = mCurrentSpeed) {
@@ -85,6 +120,7 @@ class TyperConfig {
         if (isStoped) return
         if (i < text.length) {
             mTv.append(text.substring(i until i + 1))
+            startAudioPlayer()
             mTv.postDelayed({
                 _add(text, i + 1, speed, next)
             }, speed.toLong())
@@ -106,6 +142,7 @@ class TyperConfig {
         if (i > 0 && !isStoped) {
             mTv.text = mTv.text.substring(0,
                     mTv.text.length - 1)
+            startAudioPlayer()
             mTv.postDelayed({
                 _del(i - 1, speed, next)
             }, speed.toLong())
@@ -115,13 +152,15 @@ class TyperConfig {
     }
 
 
-    private fun launchAction(item: ActionItem?) {
+    private fun launchAction(item: ActionItem?, callback: Next?) {
         if (item == null) {
+            releaseAudio()
+            callback?.next()
             return
         }
         val next = object : Next {
             override fun next() {
-                launchAction(item.next)
+                launchAction(item.next, callback)
             }
         }
         if (isStoped) return

@@ -3,10 +3,10 @@
 上面是效果图
 ## 使用方法
 1. 下载Typer.kt复制到自己的项目中
-2. 对需要打字机效果的textview设置如下代码
+2. 对需要打字机效果的TextView设置如下代码
 
 ```kotlin
-Typer.target(type_text)
+Typer.target(tv_text)
                 .input("阿朋：")
                 .sleep(1000)
                 .input("你好,")
@@ -43,4 +43,4 @@ Typer.target(type_text)
 删除指定个数字符串
 
 ### feature
-调整好参数，模拟打字机效果。
+调整好参数，模拟打字机效果。而且有打字声音哦。
